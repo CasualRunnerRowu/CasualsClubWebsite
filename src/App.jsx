@@ -177,9 +177,9 @@ function Polaroid({ src, label, caption, icon: Icon, delay = 0, rotate = 0 }) {
 
 /* ═══════════════════════════ APP ═════════════════════════ */
 export default function App() {
-  // Google Forms config - replace these after creating your form
-  const GOOGLE_FORM_ACTION = 'https://docs.google.com/forms/d/e/YOUR_FORM_ID/formResponse'
-  const GOOGLE_FORM_EMAIL_ENTRY = 'entry.123456789' // Replace with your actual entry ID
+  // Google Forms config
+  const GOOGLE_FORM_ACTION = 'https://docs.google.com/forms/d/e/1FAIpQLScVBUHPdQEJ3d25UWq66lqiVKSRI2-W0TU4WbFrA0UHHjHS4A/formResponse'
+  const GOOGLE_FORM_EMAIL_ENTRY = 'entry.822152066'
 
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
