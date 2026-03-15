@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, useInView, useScroll, useTransform } from 'framer-motion'
+import { motion, useInView, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from 'framer-motion'
 import {
   ArrowDown,
   MessageCircle,
@@ -11,6 +11,7 @@ import {
   Music,
   Zap,
   Heart,
+  Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,26 +20,91 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import secondImage from '../websiteImages/secondimage.jpg'
 
-/* ────────────────────── animation helpers ────────────────── */
+/* ────────────────────── spring configs ───────────────────── */
+const spring = { type: 'spring', stiffness: 300, damping: 24 }
+const gentleSpring = { type: 'spring', stiffness: 180, damping: 22 }
+
+/* ────────────────────── animation variants ───────────────── */
 const fadeUp = {
-  hidden: { opacity: 0, y: 40 },
+  hidden: { opacity: 0, y: 36 },
   visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: i * 0.12 },
+    opacity: 1, y: 0,
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: i * 0.1 },
+  }),
+}
+const fadeLeft = {
+  hidden: { opacity: 0, x: -36 },
+  visible: (i = 0) => ({
+    opacity: 1, x: 0,
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: i * 0.1 },
+  }),
+}
+const fadeRight = {
+  hidden: { opacity: 0, x: 36 },
+  visible: (i = 0) => ({
+    opacity: 1, x: 0,
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: i * 0.1 },
+  }),
+}
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.88 },
+  visible: (i = 0) => ({
+    opacity: 1, scale: 1,
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: i * 0.1 },
   }),
 }
 
-function Reveal({ children, className = '', delay = 0 }) {
+/* ────────────────────── scroll progress bar ──────────────── */
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll()
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 })
+  return (
+    <motion.div
+      className="fixed top-0 left-0 right-0 z-[100] h-[2px] bg-casual-blue origin-left pointer-events-none"
+      style={{ scaleX }}
+    />
+  )
+}
+
+/* ────────────────────── Reveal ────────────────────────────── */
+function Reveal({ children, className = '', delay = 0, direction = 'up' }) {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
+  const variants = direction === 'left' ? fadeLeft
+    : direction === 'right' ? fadeRight
+    : direction === 'scale' ? scaleIn
+    : fadeUp
   return (
     <motion.div
       ref={ref}
       initial="hidden"
       animate={inView ? 'visible' : 'hidden'}
-      variants={fadeUp}
+      variants={variants}
       custom={delay}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ────────────────────── TiltCard ──────────────────────────── */
+function TiltCard({ children, className = '', intensity = 7 }) {
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [intensity, -intensity]), { stiffness: 280, damping: 28 })
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-intensity, intensity]), { stiffness: 280, damping: 28 })
+  function onMove(e) {
+    const r = e.currentTarget.getBoundingClientRect()
+    x.set((e.clientX - r.left) / r.width - 0.5)
+    y.set((e.clientY - r.top) / r.height - 0.5)
+  }
+  function onLeave() { x.set(0); y.set(0) }
+  return (
+    <motion.div
+      style={{ rotateX, rotateY, transformPerspective: 1000 }}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
       className={className}
     >
       {children}
@@ -72,33 +138,39 @@ function Container({ className = '', children, size = 'default' }) {
 function Polaroid({ src, label, caption, icon: Icon, delay = 0, rotate = 0 }) {
   return (
     <Reveal delay={delay} className="h-full">
-      <motion.div
-        whileHover={{ y: -6, rotate: 0, scale: 1.02 }}
-        className="group h-full cursor-default"
-        style={{ rotate: `${rotate}deg` }}
-      >
-        <Card className="h-full overflow-hidden border-none bg-white p-3 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_12px_40px_rgba(0,0,0,0.14)] rounded-sm">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-asphalt/5">
-            <img
-              src={src}
-              alt={label}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-            {Icon && (
-              <div className="absolute bottom-3 left-3">
-                <Badge variant="secondary" className="gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-white backdrop-blur-md border-none">
-                  <Icon className="h-3.5 w-3.5" />
-                  <span className="text-xs font-semibold tracking-wide">{label}</span>
-                </Badge>
-              </div>
-            )}
-          </div>
-          <CardContent className="px-1 pt-3 pb-1 sm:px-1 sm:pt-4 sm:pb-2">
-            <p className="font-heading text-sm font-bold text-asphalt sm:text-base">{label}</p>
-            {caption && <p className="mt-1 text-xs text-asphalt/45 sm:text-sm">{caption}</p>}
-          </CardContent>
-        </Card>
-      </motion.div>
+      <TiltCard className="h-full" intensity={5}>
+        <motion.div
+          whileHover={{ y: -8, rotate: 0, scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          transition={spring}
+          className="group h-full cursor-default"
+          style={{ rotate: `${rotate}deg` }}
+        >
+          <Card className="h-full overflow-hidden border-none bg-white p-3 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] transition-shadow duration-500 rounded-sm">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-asphalt/5">
+              <motion.img
+                src={src}
+                alt={label}
+                className="h-full w-full object-cover"
+                whileHover={{ scale: 1.07 }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              />
+              {Icon && (
+                <div className="absolute bottom-3 left-3">
+                  <Badge variant="secondary" className="gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-white backdrop-blur-md border-none">
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="text-xs font-semibold tracking-wide">{label}</span>
+                  </Badge>
+                </div>
+              )}
+            </div>
+            <CardContent className="px-1 pt-3 pb-1 sm:px-1 sm:pt-4 sm:pb-2">
+              <p className="font-heading text-sm font-bold text-asphalt sm:text-base">{label}</p>
+              {caption && <p className="mt-1 text-xs text-asphalt/45 sm:text-sm">{caption}</p>}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </TiltCard>
     </Reveal>
   )
 }
@@ -125,6 +197,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-cloud overflow-x-hidden">
+      <ScrollProgress />
 
       {/* ━━━━━━━━━━━━━━━━━━ NAV ━━━━━━━━━━━━━━━━━━ */}
       <nav
@@ -136,32 +209,48 @@ export default function App() {
       >
         <Container>
           <div className="flex items-center justify-between py-4">
-            <a href="#" className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="Casuals Club" className="h-8 w-8 rounded-full object-contain" />
+            <motion.a href="#" className="flex items-center gap-2.5"
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={spring}
+            >
+              <motion.img src="/logo.png" alt="Casuals Club" className="h-8 w-8 rounded-full object-contain"
+                animate={{ rotate: [0, 3, -3, 0] }}
+                transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+              />
               <span className={`font-heading text-[15px] font-bold tracking-wide transition-colors duration-500 ${scrolled ? 'text-asphalt' : 'text-white'}`}>
                 CASUALS CLUB
               </span>
-            </a>
+            </motion.a>
 
             <div className={`hidden items-center gap-9 text-[12px] font-medium uppercase tracking-[0.18em] lg:flex transition-colors duration-500 ${scrolled ? 'text-asphalt/50' : 'text-white/65'}`}>
-              <a href="#story" className={`transition-colors ${scrolled ? 'hover:text-asphalt' : 'hover:text-white'}`}>Story</a>
-              <a href="#events" className={`transition-colors ${scrolled ? 'hover:text-asphalt' : 'hover:text-white'}`}>Events</a>
-              <a href="#culture" className={`transition-colors ${scrolled ? 'hover:text-asphalt' : 'hover:text-white'}`}>Culture</a>
-              <a href="#join" className={`transition-colors ${scrolled ? 'hover:text-asphalt' : 'hover:text-white'}`}>Join</a>
+              {['Story', 'Events', 'Culture', 'Join'].map((item) => (
+                <motion.a key={item} href={`#${item.toLowerCase()}`} className="relative py-0.5"
+                  whileHover={{ color: scrolled ? 'rgb(30,30,30)' : 'rgb(255,255,255)' }}
+                >
+                  {item}
+                  <motion.span
+                    className={`absolute bottom-0 left-0 h-px w-full ${scrolled ? 'bg-asphalt' : 'bg-white'}`}
+                    initial={{ scaleX: 0, originX: 0 }}
+                    whileHover={{ scaleX: 1 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  />
+                </motion.a>
+              ))}
             </div>
 
-            <Button
-              variant="outline"
-              size="lg"
-              render={<a href="#join" />}
-              className={`rounded-full text-[12px] font-semibold tracking-wide transition-all duration-500 ${
-                scrolled
-                  ? 'border-asphalt/15 text-asphalt hover:bg-asphalt hover:text-white'
-                  : 'border-white/25 bg-transparent text-white hover:bg-white hover:text-asphalt'
-              }`}
-            >
-              Join the Club
-            </Button>
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} transition={spring}>
+              <Button
+                variant="outline"
+                size="lg"
+                render={<a href="#join" />}
+                className={`rounded-full text-[12px] font-semibold tracking-wide transition-all duration-500 ${
+                  scrolled
+                    ? 'border-asphalt/15 text-asphalt hover:bg-asphalt hover:text-white'
+                    : 'border-white/25 bg-transparent text-white hover:bg-white hover:text-asphalt'
+                }`}
+              >
+                Join the Club
+              </Button>
+            </motion.div>
           </div>
         </Container>
       </nav>
@@ -172,9 +261,9 @@ export default function App() {
           src="/hero.png"
           alt="Runners in motion"
           className="absolute inset-0 h-full w-full object-cover"
-          initial={{ scale: 1.08 }}
+          initial={{ scale: 1.1 }}
           animate={{ scale: 1 }}
-          transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/65" />
 
@@ -183,23 +272,30 @@ export default function App() {
             src="/logo.png"
             alt="Casuals Club"
             className="mb-6 h-16 w-16 rounded-full object-contain shadow-2xl sm:h-20 sm:w-20"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.7 }}
+            initial={{ opacity: 0, scale: 0.75, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           />
-          <motion.h1
-            className="font-heading text-[clamp(3.5rem,10vw,9rem)] font-bold leading-[0.88] tracking-tight text-white"
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          >
-            CASUALS<br />CLUB
-          </motion.h1>
+
+          {/* staggered line reveal */}
+          {['CASUALS', 'CLUB'].map((line, i) => (
+            <div key={i} className="overflow-hidden">
+              <motion.div
+                className="font-heading text-[clamp(3.5rem,10vw,9rem)] font-bold leading-[0.88] tracking-tight text-white"
+                initial={{ y: '110%' }}
+                animate={{ y: 0 }}
+                transition={{ delay: 0.28 + i * 0.13, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {line}
+              </motion.div>
+            </div>
+          ))}
+
           <motion.p
             className="mt-5 text-[11px] font-medium uppercase tracking-[0.35em] text-white/45 sm:text-xs"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.55, duration: 0.8 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.68, duration: 0.8 }}
           >
             Movement &middot; Music &middot; Connection
           </motion.p>
@@ -207,21 +303,33 @@ export default function App() {
             className="mx-auto mt-7 max-w-xl text-base leading-7 text-white/60 sm:text-lg"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65, duration: 0.8 }}
+            transition={{ delay: 0.8, duration: 0.8 }}
           >
             A community-driven social club for people who want to stay active, meet new people, and build something real together.
           </motion.p>
-        </Container>
 
-        <motion.a
-          href="#story"
-          className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-white/50"
-          animate={{ y: [0, 8, 0] }}
-          transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-        >
-          <span className="text-[10px] uppercase tracking-[0.3em]">Scroll</span>
-          <ArrowDown className="h-4 w-4" />
-        </motion.a>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.98, duration: 0.7 }}
+          >
+            <motion.a
+              href="#story"
+              whileHover={{ y: 3 }}
+              whileTap={{ scale: 0.95 }}
+              transition={spring}
+              className="mt-10 inline-flex flex-col items-center gap-2 text-white/50"
+            >
+              <span className="text-[10px] uppercase tracking-[0.3em]">Scroll</span>
+              <motion.div
+                animate={{ y: [0, 7, 0] }}
+                transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+              >
+                <ArrowDown className="h-4 w-4" />
+              </motion.div>
+            </motion.a>
+          </motion.div>
+        </Container>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━ STORY (split) ━━━━━━━━━━━━━━━━━━ */}
@@ -235,40 +343,47 @@ export default function App() {
 
             <div className="flex items-center px-6 py-16 sm:px-10 md:px-14 lg:px-16 xl:px-20 2xl:px-24 lg:py-24">
               <div className="max-w-lg">
-                <Reveal>
+                <Reveal direction="right">
                   <Badge variant="secondary" className="rounded-full bg-terracotta/10 text-terracotta border-none font-heading text-[11px] font-semibold uppercase tracking-[0.3em] px-3 py-1">
                     Our Story
                   </Badge>
                 </Reveal>
-                <Reveal delay={1}>
+                <Reveal delay={1} direction="right">
                   <h2 className="mt-6 font-heading text-3xl font-bold leading-[1.08] text-asphalt sm:text-4xl lg:text-5xl">
                     Built for people who wanted{' '}
                     <span className="text-casual-blue">more than a run group.</span>
                   </h2>
                 </Reveal>
-                <Reveal delay={2}>
+                <Reveal delay={2} direction="right">
                   <p className="mt-6 text-base leading-7 text-asphalt/55 sm:text-[17px] sm:leading-8">
-                    The city already had running culture. What was missing was something younger, more social, and less competitive — a space for movement, music, community, and genuine connection all in the same place.
+                    The city already had running culture. What was missing was something younger, more social, and less competitive, a space for movement, music, community, and genuine connection all in the same place.
                   </p>
                 </Reveal>
-                <Reveal delay={3}>
+                <Reveal delay={3} direction="right">
                   <p className="mt-4 text-base leading-7 text-asphalt/45 sm:text-[17px] sm:leading-8">
-                    Weekly runs keep the rhythm. Monthly events turn that rhythm into something bigger — a healthier version of a social where people move together, meet new faces, and stay for the atmosphere.
+                    Weekly runs keep the rhythm. Monthly events turn that rhythm into something bigger, creating a healthier version of a social where people move together, meet new faces, and stay for the atmosphere.
                   </p>
                 </Reveal>
-                <Reveal delay={4}>
+                <Reveal delay={4} direction="right">
                   <div className="mt-10 grid grid-cols-3 gap-3">
                     {[
-                      { stat: 'Open Pace', sub: 'Run, jog, or walk.' },
-                      { stat: 'Weekly Coffee Run', sub: 'Midweek meetup.' },
-                      { stat: 'Monthly', sub: 'Culture events.' },
-                    ].map((item) => (
-                      <Card key={item.stat} className="border-none bg-white shadow-sm rounded-2xl p-0">
-                        <CardContent className="p-4">
-                          <p className="font-heading text-sm font-bold text-asphalt">{item.stat}</p>
-                          <p className="mt-1 text-xs text-asphalt/45">{item.sub}</p>
-                        </CardContent>
-                      </Card>
+                      { stat: 'Weekend Socials', sub: 'Hangouts beyond the run.' },
+                      { stat: 'Special Events', sub: 'Pop-ups, DJs, and parties.' },
+                      { stat: 'Open Pace', sub: 'All paces welcome.' },
+                    ].map((item, i) => (
+                      <motion.div
+                        key={item.stat}
+                        whileHover={{ y: -4, scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={spring}
+                      >
+                        <Card className="border-none bg-white shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl p-0 h-full">
+                          <CardContent className="p-4">
+                            <p className="font-heading text-sm font-bold text-asphalt">{item.stat}</p>
+                            <p className="mt-1 text-xs text-asphalt/45">{item.sub}</p>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
                     ))}
                   </div>
                 </Reveal>
@@ -291,24 +406,27 @@ export default function App() {
                   Once a month, the run becomes a full experience.
                 </h2>
                 <p className="mt-5 text-base leading-7 text-asphalt/50 sm:text-[17px] sm:leading-8">
-                  The weekly run is the foundation. The monthly event is where the wider culture shows up — music, vendors, post-run connection, and an atmosphere that feels active and energizing.
+                  The weekly run is the foundation. The monthly event is where the wider culture shows up, music, vendors, post-run connection, and an atmosphere that feels active and energizing.
                 </p>
 
-                <Card className="mt-8 border-none bg-white shadow-sm rounded-2xl p-0">
-                  <CardContent className="p-6 sm:p-7">
-                    <p className="font-heading text-xl font-bold text-asphalt">Next up: May 3rd</p>
-                    <p className="mt-2 text-sm leading-6 text-asphalt/50">
-                      A casual 5K, music, local vendors, and the kind of post-run atmosphere that keeps people staying longer.
-                    </p>
-                    <Button
-                      size="lg"
-                      className="mt-6 rounded-full bg-asphalt px-8 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-asphalt-light"
-                      onClick={() => {}}
-                    >
-                      RSVP for May 3rd
-                    </Button>
-                  </CardContent>
-                </Card>
+                <motion.div whileHover={{ scale: 1.01 }} transition={gentleSpring}>
+                  <Card className="mt-8 border-none bg-white shadow-sm rounded-2xl p-0">
+                    <CardContent className="p-6 sm:p-7">
+                      <p className="font-heading text-xl font-bold text-asphalt">Next up: May 3rd</p>
+                      <p className="mt-2 text-sm leading-6 text-asphalt/50">
+                        A casual 5K, music, local vendors, and the kind of post-run atmosphere that keeps people staying longer.
+                      </p>
+                      <Button
+                        size="lg"
+                        disabled
+                        className="mt-6 rounded-full bg-asphalt/20 px-8 py-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-asphalt/40 cursor-not-allowed border border-asphalt/10 gap-2"
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        Coming Soon
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </div>
             </Reveal>
 
@@ -415,77 +533,106 @@ export default function App() {
 
           <div className="mx-auto mt-14 grid max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
             <Reveal delay={0}>
-              <motion.a
-                href="https://ig.me/j/AbbClY3jKu7ge-z7"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ y: -4 }}
-                className="group block h-full rounded-2xl border border-white/10 bg-white/[0.07] p-6 backdrop-blur-md transition-all hover:border-white/20 sm:p-7"
-              >
-                <MessageCircle className="mb-4 h-7 w-7 text-casual-blue" />
-                <h3 className="font-heading text-lg font-bold text-white">Join the Chat</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/40">
-                  Routes, reminders, and the easiest way to meet the crew.
-                </p>
-                <span className="mt-5 inline-block text-sm font-semibold text-casual-blue transition-all group-hover:tracking-wider">
-                  Join on Instagram →
-                </span>
-              </motion.a>
+              <TiltCard intensity={4} className="h-full">
+                <motion.a
+                  href="https://ig.me/j/AbbClY3jKu7ge-z7"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ y: -6 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={spring}
+                  className="group block h-full rounded-2xl border border-white/10 bg-white/[0.07] p-6 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-white/[0.10] sm:p-7"
+                >
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-casual-blue/20 ring-1 ring-casual-blue/30">
+                    <MessageCircle className="h-5 w-5 text-casual-blue" />
+                  </div>
+                  <h3 className="font-heading text-lg font-bold text-white">Join the Chat</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/40">
+                    Routes, reminders, and the easiest way to meet the crew.
+                  </p>
+                  <motion.span
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-casual-blue"
+                    whileHover={{ x: 4 }}
+                    transition={spring}
+                  >
+                    Join on Instagram <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </motion.span>
+                </motion.a>
+              </TiltCard>
             </Reveal>
 
             <Reveal delay={1}>
-              <motion.a
-                href="https://www.instagram.com/thecasuals.club/"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ y: -4 }}
-                className="group block h-full rounded-2xl border border-white/10 bg-white/[0.07] p-6 backdrop-blur-md transition-all hover:border-white/20 sm:p-7"
-              >
-                <Instagram className="mb-4 h-7 w-7 text-terracotta" />
-                <h3 className="font-heading text-lg font-bold text-white">Follow the Culture</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/40">
-                  Weekly recaps, event photos, and the people behind the movement.
-                </p>
-                <span className="mt-5 inline-block text-sm font-semibold text-terracotta transition-all group-hover:tracking-wider">
-                  @thecasuals.club →
-                </span>
-              </motion.a>
+              <TiltCard intensity={4} className="h-full">
+                <motion.a
+                  href="https://www.instagram.com/thecasuals.club/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ y: -6 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={spring}
+                  className="group block h-full rounded-2xl border border-white/10 bg-white/[0.07] p-6 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-white/[0.10] sm:p-7"
+                >
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/25 via-pink-500/20 to-orange-400/20 ring-1 ring-pink-400/25">
+                    <Instagram className="h-5 w-5 text-pink-400" />
+                  </div>
+                  <h3 className="font-heading text-lg font-bold text-white">Follow the Culture</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/40">
+                    Weekly recaps, event photos, and the people behind the movement.
+                  </p>
+                  <motion.span
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-pink-400"
+                    whileHover={{ x: 4 }}
+                    transition={spring}
+                  >
+                    @thecasuals.club <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </motion.span>
+                </motion.a>
+              </TiltCard>
             </Reveal>
 
             <Reveal delay={2}>
-              <div className="h-full rounded-2xl border border-casual-blue/20 bg-casual-blue/[0.12] p-6 backdrop-blur-md sm:col-span-2 sm:p-7 lg:col-span-1">
-                <Mail className="mb-4 h-7 w-7 text-casual-blue" />
-                <h3 className="font-heading text-lg font-bold text-white">Stay in the Loop</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/40">
-                  Event drops, updates, and collabs — straight to your inbox.
-                </p>
-                <form onSubmit={handleSubmit} className="mt-5 flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="min-w-0 flex-1 rounded-xl border-white/12 bg-white/8 h-10 px-4 text-sm text-white placeholder:text-white/35 focus-visible:border-casual-blue/50 focus-visible:ring-casual-blue/20"
-                  />
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="rounded-xl bg-casual-blue px-4 text-white hover:bg-casual-blue-dark h-10"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-                {submitted && (
-                  <motion.p
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-3 text-xs text-casual-blue"
-                  >
-                    You're in. Welcome to the club.
-                  </motion.p>
-                )}
-              </div>
+              <TiltCard intensity={4} className="h-full">
+                <div className="h-full rounded-2xl border border-casual-blue/20 bg-casual-blue/[0.12] p-6 backdrop-blur-md sm:col-span-2 sm:p-7 lg:col-span-1">
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-casual-blue/25 ring-1 ring-casual-blue/30">
+                    <Mail className="h-5 w-5 text-casual-blue" />
+                  </div>
+                  <h3 className="font-heading text-lg font-bold text-white">Stay in the Loop</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/40">
+                    Event drops, updates, and collabs straight to your inbox.
+                  </p>
+                  <form onSubmit={handleSubmit} className="mt-5 flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="min-w-0 flex-1 rounded-xl border-white/12 bg-white/8 h-10 px-4 text-sm text-white placeholder:text-white/35 focus-visible:border-casual-blue/50 focus-visible:ring-casual-blue/20"
+                    />
+                    <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.93 }} transition={spring}>
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="rounded-xl bg-casual-blue px-4 text-white hover:bg-casual-blue-dark h-10"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </motion.div>
+                  </form>
+                  <AnimatePresence>
+                    {submitted && (
+                      <motion.p
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="mt-3 text-xs text-casual-blue"
+                      >
+                        You're in. Welcome to the club.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </TiltCard>
             </Reveal>
           </div>
         </Container>
@@ -494,10 +641,14 @@ export default function App() {
       {/* ━━━━━━━━━━━━━━━━━━ PARTNER ━━━━━━━━━━━━━━━━━━ */}
       <section id="partner" className="bg-cloud py-20 sm:py-24 lg:py-28">
         <Container size="narrow" className="text-center">
-          <Reveal>
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta">
+          <Reveal direction="scale">
+            <motion.div
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta"
+              whileHover={{ scale: 1.12, rotate: 6 }}
+              transition={spring}
+            >
               <Handshake className="h-7 w-7" />
-            </div>
+            </motion.div>
           </Reveal>
           <Reveal delay={1}>
             <h2 className="mt-6 font-heading text-3xl font-bold text-asphalt sm:text-4xl">
@@ -510,14 +661,16 @@ export default function App() {
             </p>
           </Reveal>
           <Reveal delay={3}>
-            <Button
-              size="lg"
-              render={<a href="mailto:hello@casualsclub.com" />}
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-terracotta px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] text-white hover:brightness-110"
-            >
-              <Mail className="h-4 w-4" />
-              Get in Touch
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} transition={spring} className="inline-block mt-8">
+              <Button
+                size="lg"
+                render={<a href="mailto:hello@casualsclub.com" />}
+                className="inline-flex items-center gap-2 rounded-full bg-terracotta px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] text-white hover:brightness-110"
+              >
+                <Mail className="h-4 w-4" />
+                Get in Touch
+              </Button>
+            </motion.div>
           </Reveal>
         </Container>
       </section>
@@ -526,40 +679,45 @@ export default function App() {
       <footer className="bg-asphalt py-16 text-white sm:py-20">
         <Container>
           <div className="flex flex-col items-center text-center">
-            <img src="/logo.png" alt="Casuals Club" className="h-12 w-12 rounded-full object-contain sm:h-14 sm:w-14" />
+            <motion.img src="/logo.png" alt="Casuals Club" className="h-12 w-12 rounded-full object-contain sm:h-14 sm:w-14"
+              whileHover={{ scale: 1.1, rotate: 8 }} transition={spring}
+            />
             <p className="mt-4 font-heading text-xl font-bold tracking-wide sm:text-2xl">CASUALS CLUB</p>
             <p className="mt-2 text-[11px] uppercase tracking-[0.3em] text-white/35">Movement &middot; Music &middot; Connection</p>
 
-            <div className="mt-8 flex items-center gap-4">
-              <a
-                href="https://www.instagram.com/thecasuals.club/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.08] text-white/60 transition-all hover:bg-casual-blue hover:text-white hover:scale-110"
-              >
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a
-                href="https://ig.me/j/AbbClY3jKu7ge-z7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.08] text-white/60 transition-all hover:bg-casual-blue hover:text-white hover:scale-110"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <a
-                href="mailto:hello@casualsclub.com"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.08] text-white/60 transition-all hover:bg-casual-blue hover:text-white hover:scale-110"
-              >
-                <Mail className="h-5 w-5" />
-              </a>
+            <div className="mt-8 flex items-center gap-3">
+              {[
+                { href: 'https://www.instagram.com/thecasuals.club/', icon: Instagram, label: 'Instagram', color: 'hover:bg-gradient-to-br hover:from-purple-500 hover:via-pink-500 hover:to-orange-400' },
+                { href: 'https://ig.me/j/AbbClY3jKu7ge-z7', icon: MessageCircle, label: 'Community Chat', color: 'hover:bg-casual-blue' },
+                { href: 'mailto:hello@casualsclub.com', icon: Mail, label: 'Email', color: 'hover:bg-terracotta' },
+              ].map(({ href, icon: Icon, label, color }) => (
+                <motion.a
+                  key={label}
+                  href={href}
+                  target={href.startsWith('mailto') ? undefined : '_blank'}
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  whileHover={{ scale: 1.15, y: -3 }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={spring}
+                  className={`flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.08] text-white/60 transition-all duration-300 hover:text-white ${color}`}
+                >
+                  <Icon className="h-5 w-5" />
+                </motion.a>
+              ))}
             </div>
 
             <div className="mt-8 flex items-center gap-8 text-[11px] font-medium uppercase tracking-[0.2em] text-white/30">
-              <a href="#story" className="transition-colors hover:text-white/60">Story</a>
-              <a href="#events" className="transition-colors hover:text-white/60">Events</a>
-              <a href="#culture" className="transition-colors hover:text-white/60">Culture</a>
-              <a href="#join" className="transition-colors hover:text-white/60">Join</a>
+              {['Story', 'Events', 'Culture', 'Join'].map((item) => (
+                <motion.a
+                  key={item}
+                  href={`#${item.toLowerCase()}`}
+                  whileHover={{ color: 'rgba(255,255,255,0.7)', y: -1 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {item}
+                </motion.a>
+              ))}
             </div>
 
             <Separator className="my-8 w-full max-w-xs bg-white/[0.08]" />
