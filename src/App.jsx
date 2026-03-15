@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import secondImage from '../websiteImages/secondimage.jpg'
 
 /* ────────────────────── animation helpers ────────────────── */
 const fadeUp = {
@@ -228,7 +229,7 @@ export default function App() {
         <div className="mx-auto max-w-[1400px]">
           <div className="grid min-h-[85svh] grid-cols-1 lg:grid-cols-2">
             <div className="relative min-h-[50vh] lg:min-h-full">
-              <ParallaxImage src="/run-night.png" alt="Night run" className="absolute inset-0 h-full" />
+              <ParallaxImage src={secondImage} alt="Night run" className="absolute inset-0 h-full" />
               <div className="absolute inset-0 bg-black/15" />
             </div>
 
