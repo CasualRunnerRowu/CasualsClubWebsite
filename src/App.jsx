@@ -260,7 +260,7 @@ export default function App() {
                   <div className="mt-10 grid grid-cols-3 gap-3">
                     {[
                       { stat: 'Open Pace', sub: 'Run, jog, or walk.' },
-                      { stat: 'Weekly', sub: 'Consistent rhythm.' },
+                      { stat: 'Weekly Coffee Run', sub: 'Midweek meetup.' },
                       { stat: 'Monthly', sub: 'Culture events.' },
                     ].map((item) => (
                       <Card key={item.stat} className="border-none bg-white shadow-sm rounded-2xl p-0">
