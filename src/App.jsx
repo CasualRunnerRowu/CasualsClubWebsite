@@ -177,6 +177,10 @@ function Polaroid({ src, label, caption, icon: Icon, delay = 0, rotate = 0 }) {
 
 /* ═══════════════════════════ APP ═════════════════════════ */
 export default function App() {
+  // Google Forms config - replace these after creating your form
+  const GOOGLE_FORM_ACTION = 'https://docs.google.com/forms/d/e/YOUR_FORM_ID/formResponse'
+  const GOOGLE_FORM_EMAIL_ENTRY = 'entry.123456789' // Replace with your actual entry ID
+
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -187,9 +191,27 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email) return
+
+    // Submit to Google Forms
+    const formData = new FormData()
+    formData.append(GOOGLE_FORM_EMAIL_ENTRY, email)
+
+    try {
+      // Google Forms doesn't allow CORS, so we use no-cors mode
+      // This means we won't get a response, but the submission will work
+      await fetch(GOOGLE_FORM_ACTION, {
+        method: 'POST',
+        body: formData,
+        mode: 'no-cors',
+      })
+    } catch (err) {
+      console.error('Form submission error:', err)
+    }
+
+    // Show success message regardless (no-cors prevents us from checking response)
     setSubmitted(true)
     setEmail('')
     setTimeout(() => setSubmitted(false), 3000)
