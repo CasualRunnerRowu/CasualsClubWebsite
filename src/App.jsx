@@ -212,7 +212,7 @@ export default function App() {
             <motion.a href="#" className="flex items-center gap-2.5"
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={spring}
             >
-              <motion.img src="/logo.png" alt="Casuals Club" className="h-8 w-8 rounded-full object-contain"
+              <motion.img src="/logo.png" alt="Casuals Club" className="h-8 w-8 object-contain"
                 animate={{ rotate: [0, 3, -3, 0] }}
                 transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
               />
@@ -271,7 +271,7 @@ export default function App() {
           <motion.img
             src="/logo.png"
             alt="Casuals Club"
-            className="mb-6 h-16 w-16 rounded-full object-contain shadow-2xl sm:h-20 sm:w-20"
+            className="mb-6 h-16 w-16 object-contain sm:h-20 sm:w-20"
             initial={{ opacity: 0, scale: 0.75, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
@@ -679,7 +679,7 @@ export default function App() {
       <footer className="bg-asphalt py-16 text-white sm:py-20">
         <Container>
           <div className="flex flex-col items-center text-center">
-            <motion.img src="/logo.png" alt="Casuals Club" className="h-12 w-12 rounded-full object-contain sm:h-14 sm:w-14"
+            <motion.img src="/logo.png" alt="Casuals Club" className="h-12 w-12 object-contain sm:h-14 sm:w-14"
               whileHover={{ scale: 1.1, rotate: 8 }} transition={spring}
             />
             <p className="mt-4 font-heading text-xl font-bold tracking-wide sm:text-2xl">CASUALS CLUB</p>
